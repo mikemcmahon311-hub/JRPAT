@@ -1,0 +1,255 @@
+import { useState, useEffect } from 'react'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
+import { Loader } from 'lucide-react'
+import { fetchRoster, fetchTimes } from '../lib/database'
+import { formatTime } from '../lib/utils'
+
+export default function Dashboard() {
+  const [roster, setRoster] = useState([])
+  const [times, setTimes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [rosterData, timesData] = await Promise.all([
+          fetchRoster(),
+          fetchTimes(),
+        ])
+        setRoster(rosterData)
+        setTimes(timesData)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader className="animate-spin text-ember" size={32} />
+          <p className="text-muted">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-surface border border-border rounded-lg p-6 text-center">
+        <p className="text-fire">Error loading data: {error}</p>
+      </div>
+    )
+  }
+
+  // Compute KPI data
+  const members2026 = roster.filter((m) => m.times[2026])
+  const twoThousandSixTimes = members2026.map((m) => m.times[2026])
+  const deptAvg2026 = twoThousandSixTimes.length
+    ? Math.round(twoThousandSixTimes.reduce((a, b) => a + b, 0) / twoThousandSixTimes.length)
+    : 0
+  const fastestTime2026 = twoThousandSixTimes.length ? Math.min(...twoThousandSixTimes) : 0
+  const tshirtCount = roster.reduce((sum, m) => sum + (m.tshirtCount || 0), 0)
+  const allTimeBest = roster.length
+    ? Math.min(...roster.filter((m) => m.personalBest).map((m) => m.personalBest))
+    : 0
+
+  // Station Showdown data: group by station/shift, calculate avg
+  const stationData = {}
+  roster.forEach((member) => {
+    if (!member.times[2026]) return
+    const key = `${member.station || 'Unknown'}-${member.shift || 'Unknown'}`
+    if (!stationData[key]) {
+      stationData[key] = { times: [], station: member.station, shift: member.shift }
+    }
+    stationData[key].times.push(member.times[2026])
+  })
+
+  const stationChartData = Object.entries(stationData)
+    .map(([key, data]) => ({
+      name: key,
+      avg: Math.round(data.times.reduce((a, b) => a + b, 0) / data.times.length),
+      station: data.station,
+      shift: data.shift,
+    }))
+    .sort((a, b) => a.avg - b.avg)
+
+  // Year-over-year department avg
+  const yearlyAvg = {}
+  for (let year = 2020; year <= 2026; year++) {
+    const yearTimes = roster
+      .filter((m) => m.times[year])
+      .map((m) => m.times[year])
+    if (yearTimes.length > 0) {
+      yearlyAvg[year] = Math.round(yearTimes.reduce((a, b) => a + b, 0) / yearTimes.length)
+    }
+  }
+
+  const yearlyChartData = Object.entries(yearlyAvg)
+    .map(([year, avg]) => ({ year: parseInt(year), avg }))
+    .sort((a, b) => a.year - b.year)
+
+  // Recent activity
+  const recentActivity = times
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    .slice(0, 10)
+    .map((t) => {
+      const member = roster.find((m) => m.id === t.member_id)
+      return {
+        ...t,
+        memberName: member?.name || 'Unknown',
+      }
+    })
+
+  const shiftColors = {
+    'A-Shift': '#4dabf7',
+    'B-Shift': '#ff6b35',
+    'C-Shift': '#a78bfa',
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-txt md:text-4xl">Dashboard</h1>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <KPICard label="2026 Testers" value={members2026.length} />
+        <KPICard label="Dept Avg" value={formatTime(deptAvg2026)} />
+        <KPICard label="Fastest Time" value={formatTime(fastestTime2026)} color="text-gold" />
+        <KPICard label="T-Shirts Earned" value={tshirtCount} color="text-green" />
+        <KPICard label="All-Time Record" value={formatTime(allTimeBest)} color="text-ember" />
+      </div>
+
+      {/* Station Showdown */}
+      <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
+        <h2 className="text-xl font-bold text-txt mb-4">Station Showdown 2026</h2>
+        {stationChartData.length > 0 ? (
+          <div className="w-full h-80 md:h-96">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stationChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: 'var(--color-muted)', fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis tick={{ fill: 'var(--color-muted)' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-surface2)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-txt)',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value) => formatTime(value)}
+                />
+                <Bar dataKey="avg" fill="var(--color-ember)" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-muted text-center py-8">No data for 2026 yet</p>
+        )}
+      </div>
+
+      {/* Year-over-Year Trend */}
+      <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
+        <h2 className="text-xl font-bold text-txt mb-4">Department Average Trend</h2>
+        {yearlyChartData.length > 0 ? (
+          <div className="w-full h-80 md:h-96">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={yearlyChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="year"
+                  tick={{ fill: 'var(--color-muted)' }}
+                />
+                <YAxis tick={{ fill: 'var(--color-muted)' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-surface2)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-txt)',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value) => formatTime(value)}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avg"
+                  stroke="var(--color-gold)"
+                  strokeWidth={2}
+                  dot={{ fill: 'var(--color-gold)', r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-muted text-center py-8">No historical data yet</p>
+        )}
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
+        <h2 className="text-xl font-bold text-txt mb-4">Recent Activity</h2>
+        {recentActivity.length > 0 ? (
+          <div className="space-y-2">
+            {recentActivity.map((activity) => (
+              <div
+                key={activity.id}
+                className="flex items-center justify-between p-3 bg-surface2 rounded-lg border border-border hover:border-ember transition-colors"
+              >
+                <div>
+                  <p className="font-semibold text-txt">{activity.memberName}</p>
+                  <p className="text-sm text-muted">{activity.year}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xl font-bold text-gold">
+                    {formatTime(activity.time_seconds)}
+                  </span>
+                  <span
+                    className="w-3 h-3 rounded-full"
+                    style={{
+                      backgroundColor:
+                        shiftColors[activity.shift] || 'var(--color-muted)',
+                    }}
+                    title={activity.shift}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted text-center py-8">No recent activity</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function KPICard({ label, value, color = 'text-ember' }) {
+  return (
+    <div className="bg-surface border border-border rounded-lg p-4 text-center">
+      <p className="text-xs md:text-sm text-muted mb-1">{label}</p>
+      <p className={`text-2xl md:text-3xl font-bold ${color}`}>{value}</p>
+    </div>
+  )
+}
