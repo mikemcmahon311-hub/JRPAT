@@ -798,7 +798,6 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
                       </span>
                     )}
                   </td>
-<<<<<<< HEAD
                   <td className="px-4 py-3 text-center">
                     {entry.is_placeholder ? (
                       <span className="inline-block px-2 py-1 bg-yellow-500 bg-opacity-20 text-yellow-500 text-xs font-semibold rounded">Placeholder</span>
@@ -806,8 +805,6 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
                       <span className="inline-block px-2 py-1 bg-green bg-opacity-20 text-white text-xs font-semibold rounded">Time</span>
                     )}
                   </td>
-=======
->>>>>>> 00d498a (Fix leaderboard: remove green highlight, add tie support, restore Type column)
                   <td className="px-4 py-3 text-sm text-muted">{new Date(entry.updated_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-center">
                     {editingId === entry.id ? (
