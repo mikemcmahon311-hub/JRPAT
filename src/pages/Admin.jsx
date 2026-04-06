@@ -677,14 +677,23 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
   const [editTime, setEditTime] = useState('')
   const [editError, setEditError] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [search, setSearch] = useState('')
+  const [filterYear, setFilterYear] = useState('')
 
-  const recent = [...times]
+  // Build full enriched list, sorted by most recent
+  const allEntries = [...times]
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    .slice(0, 30)
     .map((t) => {
       const member = roster.find((m) => m.id === t.member_id)
       return { ...t, memberName: member?.name || 'Unknown' }
     })
+
+  // Apply search + year filter
+  const recent = allEntries.filter((e) => {
+    const matchName = e.memberName.toLowerCase().includes(search.toLowerCase())
+    const matchYear = filterYear ? e.year === parseInt(filterYear) : true
+    return matchName && matchYear
+  })
 
   const startEdit = (entry) => {
     setEditingId(entry.id)
@@ -722,9 +731,29 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
 
   return (
     <div className="bg-surface border border-border rounded-lg overflow-hidden">
-      <div className="p-6 border-b border-border">
-        <h3 className="text-lg font-bold text-txt">Recent Entries (Last 30)</h3>
-        <p className="text-muted text-sm mt-1">Click the edit icon on any row to correct a time.</p>
+      <div className="p-6 border-b border-border space-y-3">
+        <div>
+          <h3 className="text-lg font-bold text-txt">All Time Entries</h3>
+          <p className="text-muted text-sm mt-1">Search by name or filter by year. Click the edit icon on any row to correct a time.</p>
+        </div>
+        <div className="flex gap-3 flex-wrap">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 min-w-[160px] bg-surface2 border border-border rounded-lg px-3 py-2 text-txt placeholder-muted text-sm focus:outline-none focus:border-ember"
+          />
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+            className="bg-surface2 border border-border rounded-lg px-3 py-2 text-txt text-sm focus:outline-none focus:border-ember"
+          >
+            <option value="">All Years</option>
+            {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <p className="text-muted text-xs">{recent.length} {recent.length === 1 ? 'entry' : 'entries'} found</p>
       </div>
 
       {editError && (
@@ -768,7 +797,7 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
                     {entry.is_placeholder ? (
                       <span className="inline-block px-2 py-1 bg-yellow-500 bg-opacity-20 text-yellow-500 text-xs font-semibold rounded">Placeholder</span>
                     ) : (
-                      <span className="inline-block px-2 py-1 bg-green bg-opacity-20 text-green text-xs font-semibold rounded">Time</span>
+                      <span className="inline-block px-2 py-1 bg-green bg-opacity-20 text-white text-xs font-semibold rounded">Time</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted">{new Date(entry.updated_at).toLocaleDateString()}</td>
