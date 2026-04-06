@@ -48,14 +48,10 @@ export default function Leaderboard() {
     )
   }
 
-  // Individual leaderboard filtered for 2026
+  // Individual leaderboard filtered for 2026 — sorted, then ranked with tie support
   let individual = roster
     .filter((m) => m.times[2026])
-    .map((m, idx) => ({
-      ...m,
-      rank: idx + 1,
-      time: m.times[2026],
-    }))
+    .map((m) => ({ ...m, time: m.times[2026] }))
     .sort((a, b) => a.time - b.time)
 
   if (selectedStation !== 'all') {
@@ -64,6 +60,21 @@ export default function Leaderboard() {
   if (selectedShift !== 'all') {
     individual = individual.filter((m) => m.shift === selectedShift)
   }
+
+  // Assign ranks with ties (same time = same rank; next rank skips accordingly)
+  const ranked = []
+  for (let i = 0; i < individual.length; i++) {
+    if (i === 0) {
+      ranked.push({ ...individual[i], rank: 1 })
+    } else {
+      const prev = ranked[i - 1]
+      ranked.push({
+        ...individual[i],
+        rank: individual[i].time === individual[i - 1].time ? prev.rank : i + 1,
+      })
+    }
+  }
+  individual = ranked
 
   // Personal Best Leaders
   const pbLeaders = roster
@@ -146,26 +157,21 @@ export default function Leaderboard() {
           {/* Individual Rankings */}
           {individual.length > 0 ? (
             <div className="space-y-2">
-              {individual.map((member, idx) => (
+              {individual.map((member) => (
                 <div
                   key={member.id}
-                  className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                    member.time < 300
-                      ? 'bg-green bg-opacity-10 border-green'
-                      : 'bg-surface2 border-border hover:border-ember'
-                  }`}
+                  className="flex items-center justify-between p-4 rounded-lg border bg-surface2 border-border hover:border-ember transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    {idx < 3 && (
+                    {member.rank <= 3 ? (
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${getRankBadge(idx + 1)}`}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${getRankBadge(member.rank)}`}
                       >
-                        {idx + 1}
+                        {member.rank}
                       </div>
-                    )}
-                    {idx >= 3 && (
+                    ) : (
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs text-muted">
-                        {idx + 1}
+                        {member.rank}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
@@ -177,9 +183,6 @@ export default function Leaderboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-gold">{formatTime(member.time)}</p>
-                    {member.time < 300 && (
-                      <p className="text-xs text-green font-semibold">T-Shirt!</p>
-                    )}
                   </div>
                 </div>
               ))}

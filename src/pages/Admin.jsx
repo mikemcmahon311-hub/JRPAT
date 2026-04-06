@@ -767,8 +767,8 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-bold text-muted uppercase">Member</th>
                 <th className="px-4 py-3 text-center text-xs font-bold text-muted uppercase">Year</th>
-                <th className="px-4 py-3 text-center text-xs font-bold text-muted uppercase">Time</th>
                 <th className="px-4 py-3 text-center text-xs font-bold text-muted uppercase">Type</th>
+                <th className="px-4 py-3 text-center text-xs font-bold text-muted uppercase">Time</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-muted uppercase">Date</th>
                 <th className="px-4 py-3 text-center text-xs font-bold text-muted uppercase">Edit</th>
               </tr>
@@ -778,6 +778,11 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
                 <tr key={entry.id} className={`transition-colors ${editingId === entry.id ? 'bg-surface2' : 'hover:bg-surface2'}`}>
                   <td className="px-4 py-3 font-semibold text-txt text-sm">{entry.memberName}</td>
                   <td className="px-4 py-3 text-center text-muted text-sm">{entry.year}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="inline-block px-2 py-1 bg-green bg-opacity-20 text-white text-xs font-semibold rounded">
+                      {entry.is_placeholder ? 'Placeholder' : 'Time'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-center">
                     {editingId === entry.id ? (
                       <input
@@ -793,6 +798,7 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
                       </span>
                     )}
                   </td>
+<<<<<<< HEAD
                   <td className="px-4 py-3 text-center">
                     {entry.is_placeholder ? (
                       <span className="inline-block px-2 py-1 bg-yellow-500 bg-opacity-20 text-yellow-500 text-xs font-semibold rounded">Placeholder</span>
@@ -800,6 +806,8 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
                       <span className="inline-block px-2 py-1 bg-green bg-opacity-20 text-white text-xs font-semibold rounded">Time</span>
                     )}
                   </td>
+=======
+>>>>>>> 00d498a (Fix leaderboard: remove green highlight, add tie support, restore Type column)
                   <td className="px-4 py-3 text-sm text-muted">{new Date(entry.updated_at).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-center">
                     {editingId === entry.id ? (
