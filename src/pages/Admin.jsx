@@ -51,7 +51,7 @@ export default function Admin() {
       )}
 
       {successMessage && (
-        <div className="p-4 bg-green bg-opacity-10 border border-green rounded-lg text-green text-sm">
+        <div className="p-4 bg-green bg-opacity-10 border border-green rounded-lg text-txt text-sm">
           {successMessage}
         </div>
       )}
