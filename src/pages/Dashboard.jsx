@@ -12,24 +12,19 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Loader } from 'lucide-react'
-import { fetchRoster, fetchTimes } from '../lib/database'
+import { fetchRoster } from '../lib/database'
 import { formatTime } from '../lib/utils'
 
 export default function Dashboard() {
   const [roster, setRoster] = useState([])
-  const [times, setTimes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [rosterData, timesData] = await Promise.all([
-          fetchRoster(),
-          fetchTimes(),
-        ])
+        const rosterData = await fetchRoster()
         setRoster(rosterData)
-        setTimes(timesData)
       } catch (err) {
         setError(err.message)
       } finally {
@@ -105,23 +100,10 @@ export default function Dashboard() {
     .map(([year, avg]) => ({ year: parseInt(year), avg }))
     .sort((a, b) => a.year - b.year)
 
-  // Recent activity
-  const recentActivity = times
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    .slice(0, 10)
-    .map((t) => {
-      const member = roster.find((m) => m.id === t.member_id)
-      return {
-        ...t,
-        memberName: member?.name || 'Unknown',
-      }
-    })
-
-  const shiftColors = {
-    'A-Shift': '#4dabf7',
-    'B-Shift': '#ff6b35',
-    'C-Shift': '#a78bfa',
-  }
+  // New personal bests in 2026
+  const newPBs = roster
+    .filter((m) => m.times[2026] && m.personalBest && m.times[2026] === m.personalBest)
+    .sort((a, b) => a.personalBest - b.personalBest)
 
   return (
     <div className="space-y-6">
@@ -207,38 +189,33 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Recent Activity */}
+      {/* New Personal Bests */}
       <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
-        <h2 className="text-xl font-bold text-txt mb-4">Recent Activity</h2>
-        {recentActivity.length > 0 ? (
+        <h2 className="text-xl font-bold text-txt mb-1">New Personal Bests — 2026</h2>
+        <p className="text-sm text-muted mb-4">Members who set a new all-time PR this year</p>
+        {newPBs.length > 0 ? (
           <div className="space-y-2">
-            {recentActivity.map((activity) => (
+            {newPBs.map((member, idx) => (
               <div
-                key={activity.id}
+                key={member.id}
                 className="flex items-center justify-between p-3 bg-surface2 rounded-lg border border-border hover:border-ember transition-colors"
               >
-                <div>
-                  <p className="font-semibold text-txt">{activity.memberName}</p>
-                  <p className="text-sm text-muted">{activity.year}</p>
-                </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xl font-bold text-gold">
-                    {formatTime(activity.time_seconds)}
-                  </span>
-                  <span
-                    className="w-3 h-3 rounded-full"
-                    style={{
-                      backgroundColor:
-                        shiftColors[activity.shift] || 'var(--color-muted)',
-                    }}
-                    title={activity.shift}
-                  />
+                  <span className="text-lg">🏆</span>
+                  <div>
+                    <p className="font-semibold text-txt">{member.name}</p>
+                    <p className="text-xs text-muted">{member.station} · {member.shift}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-gold">{formatTime(member.personalBest)}</p>
+                  <p className="text-xs text-green font-semibold">New PB</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-muted text-center py-8">No recent activity</p>
+          <p className="text-muted text-center py-8">No new personal bests yet in 2026</p>
         )}
       </div>
     </div>
