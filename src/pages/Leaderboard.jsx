@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useYear } from '../lib/YearContext'
 import { Loader, ChevronRight, ChevronDown } from 'lucide-react'
 import { fetchRoster, fetchCrewLeaderboard } from '../lib/database'
 import { formatTime, getRankBadge, STATIONS, SHIFTS } from '../lib/utils'
 
 export default function Leaderboard() {
+  const { currentYear, yearLoading } = useYear()
   const [roster, setRoster] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -14,12 +16,13 @@ export default function Leaderboard() {
   const [expandedCrews, setExpandedCrews] = useState(new Set())
 
   useEffect(() => {
+    if (!currentYear) return
     const loadData = async () => {
       try {
         const rosterData = await fetchRoster()
         setRoster(rosterData)
 
-        const crewData = await fetchCrewLeaderboard(2026)
+        const crewData = await fetchCrewLeaderboard(currentYear)
         setCrewLeaderboard(crewData)
       } catch (err) {
         setError(err.message)
@@ -28,9 +31,9 @@ export default function Leaderboard() {
       }
     }
     loadData()
-  }, [])
+  }, [currentYear])
 
-  if (loading) {
+  if (loading || yearLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
@@ -49,10 +52,10 @@ export default function Leaderboard() {
     )
   }
 
-  // Individual leaderboard filtered for 2026 — sorted, then ranked with tie support
+  // Individual leaderboard filtered for current year — sorted, then ranked with tie support
   let individual = roster
-    .filter((m) => m.times[2026])
-    .map((m) => ({ ...m, time: m.times[2026] }))
+    .filter((m) => m.times[currentYear])
+    .map((m) => ({ ...m, time: m.times[currentYear] }))
     .sort((a, b) => a.time - b.time)
 
   if (selectedStation !== 'all') {
@@ -87,41 +90,41 @@ export default function Leaderboard() {
     .sort((a, b) => a.time - b.time)
     .slice(0, 50)
 
-  // Global 2026 individual rankings (unfiltered) — used for crew member rank display
-  const all2026 = roster
-    .filter((m) => m.times[2026])
-    .map((m) => ({ ...m, time: m.times[2026] }))
+  // Global individual rankings (unfiltered) — used for crew member rank display
+  const allThisYear = roster
+    .filter((m) => m.times[currentYear])
+    .map((m) => ({ ...m, time: m.times[currentYear] }))
     .sort((a, b) => a.time - b.time)
 
-  const allRanked2026 = []
-  for (let i = 0; i < all2026.length; i++) {
+  const allRanked = []
+  for (let i = 0; i < allThisYear.length; i++) {
     if (i === 0) {
-      allRanked2026.push({ ...all2026[i], rank: 1 })
+      allRanked.push({ ...allThisYear[i], rank: 1 })
     } else {
-      const prev = allRanked2026[i - 1]
-      allRanked2026.push({
-        ...all2026[i],
-        rank: all2026[i].time === all2026[i - 1].time ? prev.rank : i + 1,
+      const prev = allRanked[i - 1]
+      allRanked.push({
+        ...allThisYear[i],
+        rank: allThisYear[i].time === allThisYear[i - 1].time ? prev.rank : i + 1,
       })
     }
   }
   const rankById = {}
-  allRanked2026.forEach((m) => { rankById[m.id] = m.rank })
+  allRanked.forEach((m) => { rankById[m.id] = m.rank })
 
-  // Map crew name → members sorted by 2026 time
+  // Map crew name → members sorted by current year time
   const crewMembersMap = {}
   roster.forEach((member) => {
-    if (!member.times[2026]) return
+    if (!member.times[currentYear]) return
     const crew = member.crew || 'Unassigned'
     if (!crewMembersMap[crew]) crewMembersMap[crew] = []
     crewMembersMap[crew].push({
       ...member,
-      time2026: member.times[2026],
-      rank2026: rankById[member.id] ?? null,
+      timeThisYear: member.times[currentYear],
+      rankThisYear: rankById[member.id] ?? null,
     })
   })
   Object.keys(crewMembersMap).forEach((crew) => {
-    crewMembersMap[crew].sort((a, b) => a.time2026 - b.time2026)
+    crewMembersMap[crew].sort((a, b) => a.timeThisYear - b.timeThisYear)
   })
 
   const toggleCrew = (crewName) => {
@@ -156,7 +159,7 @@ export default function Leaderboard() {
             }`}
           >
             {tab === 'individual'
-              ? 'Individual (2026)'
+              ? `Individual (${currentYear})`
               : tab === 'crew'
                 ? 'Crew Average'
                 : 'Personal Best'}
@@ -293,20 +296,20 @@ export default function Leaderboard() {
                           className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0 bg-surface"
                         >
                           <div className="flex items-center gap-3">
-                            {member.rank2026 !== null && member.rank2026 <= 3 ? (
+                            {member.rankThisYear !== null && member.rankThisYear <= 3 ? (
                               <div
-                                className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${getRankBadge(member.rank2026)}`}
+                                className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${getRankBadge(member.rankThisYear)}`}
                               >
-                                {member.rank2026}
+                                {member.rankThisYear}
                               </div>
                             ) : (
                               <div className="w-6 h-6 rounded flex items-center justify-center text-xs text-muted font-semibold">
-                                {member.rank2026 !== null ? `#${member.rank2026}` : '—'}
+                                {member.rankThisYear !== null ? `#${member.rankThisYear}` : '—'}
                               </div>
                             )}
                             <p className="text-sm font-medium text-txt">{member.name}</p>
                           </div>
-                          <p className="text-sm font-bold text-gold">{formatTime(member.time2026)}</p>
+                          <p className="text-sm font-bold text-gold">{formatTime(member.timeThisYear)}</p>
                         </div>
                       ))}
                     </div>
@@ -315,7 +318,7 @@ export default function Leaderboard() {
               )
             })
           ) : (
-            <p className="text-muted text-center py-8">No crew data for 2026</p>
+            <p className="text-muted text-center py-8">No crew data for {currentYear}</p>
           )}
         </div>
       )}

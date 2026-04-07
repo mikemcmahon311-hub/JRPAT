@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Loader } from 'lucide-react'
 import { fetchRoster } from '../lib/database'
+import { useYear } from '../lib/YearContext'
 import { formatTime, STATIONS, SHIFTS } from '../lib/utils'
 
 export default function Roster() {
+  const { currentYear } = useYear()
   const [roster, setRoster] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -64,15 +66,15 @@ export default function Roster() {
   }
 
   const getRankBadge = (member) => {
-    const time = member.times[2026]
+    const time = member.times[currentYear]
     if (!time) return null
 
-    const all2026 = roster
-      .filter((m) => m.times[2026])
-      .map((m) => m.times[2026])
+    const allThisYear = roster
+      .filter((m) => m.times[currentYear])
+      .map((m) => m.times[currentYear])
       .sort((a, b) => a - b)
 
-    const rank = all2026.findIndex((t) => t === time) + 1
+    const rank = allThisYear.findIndex((t) => t === time) + 1
     if (rank > 3) return null
 
     const badges = {
@@ -155,15 +157,15 @@ export default function Roster() {
                 </div>
                 {getRankBadge(member) && (
                   <div className={`px-2 py-1 rounded text-xs font-bold ${getRankBadge(member)}`}>
-                    #{roster.filter((m) => m.times[2026] && m.times[2026] < member.times[2026]).length + 1}
+                    #{roster.filter((m) => m.times[currentYear] && m.times[currentYear] < member.times[currentYear]).length + 1}
                   </div>
                 )}
               </div>
               <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border">
                 <div>
-                  <p className="text-xs text-muted">2026 Time</p>
+                  <p className="text-xs text-muted">{currentYear} Time</p>
                   <p className="font-bold text-gold">
-                    {member.times[2026] ? formatTime(member.times[2026]) : 'Pending'}
+                    {member.times[currentYear] ? formatTime(member.times[currentYear]) : 'Pending'}
                   </p>
                 </div>
                 <div>
@@ -203,7 +205,7 @@ export default function Roster() {
                   Rank
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-bold text-muted uppercase">
-                  2026 Time
+                  {currentYear} Time
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-bold text-muted uppercase">
                   PB
@@ -223,14 +225,14 @@ export default function Roster() {
                   <td className="px-6 py-4 text-center">
                     {getRankBadge(member) ? (
                       <span className={`px-2 py-1 rounded text-xs font-bold ${getRankBadge(member)}`}>
-                        #{roster.filter((m) => m.times[2026] && m.times[2026] < member.times[2026]).length + 1}
+                        #{roster.filter((m) => m.times[currentYear] && m.times[currentYear] < member.times[currentYear]).length + 1}
                       </span>
                     ) : (
                       <span className="text-muted">—</span>
                     )}
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-gold">
-                    {member.times[2026] ? formatTime(member.times[2026]) : 'Pending'}
+                    {member.times[currentYear] ? formatTime(member.times[currentYear]) : 'Pending'}
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-blue">
                     {member.personalBest ? formatTime(member.personalBest) : '—'}

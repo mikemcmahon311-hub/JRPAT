@@ -36,13 +36,18 @@ export async function fetchRoster() {
     fetchTimes(),
   ]);
 
-  // Create a map of times for quick lookup
+  // Create a map of times and placeholder flags for quick lookup
   const timesByMemberId = {};
+  const placeholdersByMemberId = {};
   times.forEach((t) => {
     if (!timesByMemberId[t.member_id]) {
       timesByMemberId[t.member_id] = {};
+      placeholdersByMemberId[t.member_id] = new Set();
     }
     timesByMemberId[t.member_id][t.year] = t.time_seconds;
+    if (t.is_placeholder) {
+      placeholdersByMemberId[t.member_id].add(t.year);
+    }
   });
 
   // Enrich members with computed fields
@@ -61,7 +66,7 @@ export async function fetchRoster() {
 
     // Latest time (most recent year with a time)
     let latestTime = null;
-    for (let year = 2026; year >= 2020; year--) {
+    for (let year = new Date().getFullYear(); year >= 2020; year--) {
       if (memberTimes[year]) {
         latestTime = year;
         break;
@@ -71,6 +76,7 @@ export async function fetchRoster() {
     return {
       ...member,
       times: memberTimes,
+      placeholderYears: placeholdersByMemberId[member.id] || new Set(),
       personalBest,
       tshirtCount,
       latestTime,
@@ -179,4 +185,30 @@ export async function fetchCrewLeaderboard(year) {
     .sort((a, b) => a.average - b.average);
 
   return leaderboard;
+}
+
+/**
+ * Fetch the active test year from app_settings
+ */
+export async function fetchCurrentYear() {
+  const { data, error } = await supabase
+    .from('app_settings')
+    .select('value')
+    .eq('key', 'current_year')
+    .single();
+
+  if (error) throw error;
+  return parseInt(data.value, 10);
+}
+
+/**
+ * Update the active test year in app_settings
+ */
+export async function updateCurrentYear(year) {
+  const { error } = await supabase
+    .from('app_settings')
+    .update({ value: String(year) })
+    .eq('key', 'current_year');
+
+  if (error) throw error;
 }

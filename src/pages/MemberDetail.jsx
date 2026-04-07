@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useYear } from '../lib/YearContext'
 import {
   LineChart,
   Line,
@@ -14,6 +15,7 @@ import { fetchRoster } from '../lib/database'
 import { formatTime, YEARS } from '../lib/utils'
 
 export default function MemberDetail() {
+  const { currentYear } = useYear()
   const { id } = useParams()
   const navigate = useNavigate()
   const [member, setMember] = useState(null)
@@ -91,7 +93,7 @@ export default function MemberDetail() {
     .reverse()
 
   const getRankBadge = () => {
-    const time = member.times[2026]
+    const time = member.times[currentYear]
     if (!time) return null
 
     // Would need all members data to compute actual rank
@@ -129,7 +131,7 @@ export default function MemberDetail() {
           <div>
             <p className="text-xs text-muted mb-1">Rank</p>
             <p className="font-semibold text-txt">
-              {member.times[2026] ? '—' : 'Not Yet Tested'}
+              {member.times[currentYear] ? '—' : 'Not Yet Tested'}
             </p>
           </div>
         </div>

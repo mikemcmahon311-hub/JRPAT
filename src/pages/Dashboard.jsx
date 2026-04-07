@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useYear } from '../lib/YearContext'
 import {
   BarChart,
   Bar,
@@ -16,11 +17,13 @@ import { fetchRoster } from '../lib/database'
 import { formatTime } from '../lib/utils'
 
 export default function Dashboard() {
+  const { currentYear, yearLoading } = useYear()
   const [roster, setRoster] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!currentYear) return
     const loadData = async () => {
       try {
         const rosterData = await fetchRoster()
@@ -32,9 +35,9 @@ export default function Dashboard() {
       }
     }
     loadData()
-  }, [])
+  }, [currentYear])
 
-  if (loading) {
+  if (loading || yearLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
@@ -54,12 +57,12 @@ export default function Dashboard() {
   }
 
   // Compute KPI data
-  const members2026 = roster.filter((m) => m.times[2026])
-  const twoThousandSixTimes = members2026.map((m) => m.times[2026])
-  const deptAvg2026 = twoThousandSixTimes.length
-    ? Math.round(twoThousandSixTimes.reduce((a, b) => a + b, 0) / twoThousandSixTimes.length)
+  const membersThisYear = roster.filter((m) => m.times[currentYear])
+  const thisYearTimes = membersThisYear.map((m) => m.times[currentYear])
+  const deptAvg = thisYearTimes.length
+    ? Math.round(thisYearTimes.reduce((a, b) => a + b, 0) / thisYearTimes.length)
     : 0
-  const fastestTime2026 = twoThousandSixTimes.length ? Math.min(...twoThousandSixTimes) : 0
+  const fastestTime = thisYearTimes.length ? Math.min(...thisYearTimes) : 0
   const tshirtCount = roster.reduce((sum, m) => sum + (m.tshirtCount || 0), 0)
   const allTimeBest = roster.length
     ? Math.min(...roster.filter((m) => m.personalBest).map((m) => m.personalBest))
@@ -68,12 +71,12 @@ export default function Dashboard() {
   // Station Showdown data: group by station/shift, calculate avg
   const stationData = {}
   roster.forEach((member) => {
-    if (!member.times[2026]) return
+    if (!member.times[currentYear]) return
     const key = `${member.station || 'Unknown'}-${member.shift || 'Unknown'}`
     if (!stationData[key]) {
       stationData[key] = { times: [], station: member.station, shift: member.shift }
     }
-    stationData[key].times.push(member.times[2026])
+    stationData[key].times.push(member.times[currentYear])
   })
 
   const stationChartData = Object.entries(stationData)
@@ -87,7 +90,7 @@ export default function Dashboard() {
 
   // Year-over-year department avg
   const yearlyAvg = {}
-  for (let year = 2020; year <= 2026; year++) {
+  for (let year = 2020; year <= currentYear; year++) {
     const yearTimes = roster
       .filter((m) => m.times[year])
       .map((m) => m.times[year])
@@ -100,9 +103,14 @@ export default function Dashboard() {
     .map(([year, avg]) => ({ year: parseInt(year), avg }))
     .sort((a, b) => a.year - b.year)
 
-  // New personal bests in 2026
+  // New personal bests this year — exclude injury placeholders
   const newPBs = roster
-    .filter((m) => m.times[2026] && m.personalBest && m.times[2026] === m.personalBest)
+    .filter((m) =>
+      m.times[currentYear] &&
+      m.personalBest &&
+      m.times[currentYear] === m.personalBest &&
+      !m.placeholderYears.has(currentYear)
+    )
     .sort((a, b) => a.personalBest - b.personalBest)
 
   return (
@@ -111,16 +119,16 @@ export default function Dashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KPICard label="2026 Testers" value={members2026.length} />
-        <KPICard label="Dept Avg" value={formatTime(deptAvg2026)} />
-        <KPICard label="Fastest Time" value={formatTime(fastestTime2026)} color="text-gold" />
+        <KPICard label={`${currentYear} Testers`} value={membersThisYear.length} />
+        <KPICard label="Dept Avg" value={formatTime(deptAvg)} />
+        <KPICard label="Fastest Time" value={formatTime(fastestTime)} color="text-gold" />
         <KPICard label="T-Shirts Earned" value={tshirtCount} color="text-green" />
         <KPICard label="All-Time Record" value={formatTime(allTimeBest)} color="text-ember" />
       </div>
 
       {/* Station Showdown */}
       <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
-        <h2 className="text-xl font-bold text-txt mb-4">Station Showdown 2026</h2>
+        <h2 className="text-xl font-bold text-txt mb-4">Station Showdown {currentYear}</h2>
         {stationChartData.length > 0 ? (
           <div className="w-full h-80 md:h-96">
             <ResponsiveContainer width="100%" height="100%">
@@ -148,7 +156,7 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="text-muted text-center py-8">No data for 2026 yet</p>
+          <p className="text-muted text-center py-8">No data for {currentYear} yet</p>
         )}
       </div>
 
@@ -191,7 +199,7 @@ export default function Dashboard() {
 
       {/* New Personal Bests */}
       <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
-        <h2 className="text-xl font-bold text-txt mb-1">New Personal Bests — 2026</h2>
+        <h2 className="text-xl font-bold text-txt mb-1">New Personal Bests — {currentYear}</h2>
         <p className="text-sm text-muted mb-4">Members who set a new all-time PR this year</p>
         {newPBs.length > 0 ? (
           <div className="space-y-2">
@@ -215,7 +223,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <p className="text-muted text-center py-8">No new personal bests yet in 2026</p>
+          <p className="text-muted text-center py-8">No new personal bests yet in {currentYear}</p>
         )}
       </div>
     </div>

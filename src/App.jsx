@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import { YearProvider } from './lib/YearContext'
 
 // Pages
 import Dashboard from './pages/Dashboard'
@@ -13,6 +14,7 @@ import Admin from './pages/Admin'
 
 export default function App() {
   return (
+    <YearProvider>
     <Layout>
       <Routes>
         <Route path="/" element={<Dashboard />} />
@@ -31,5 +33,6 @@ export default function App() {
         />
       </Routes>
     </Layout>
+    </YearProvider>
   )
 }

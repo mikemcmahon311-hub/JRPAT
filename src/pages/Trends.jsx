@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useYear } from '../lib/YearContext'
 import {
   LineChart,
   Line,
@@ -16,6 +17,7 @@ import { fetchRoster } from '../lib/database'
 import { formatTime, YEARS, STATIONS, SHIFTS } from '../lib/utils'
 
 export default function Trends() {
+  const { currentYear } = useYear()
   const [roster, setRoster] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -65,7 +67,7 @@ export default function Trends() {
     }
   }
 
-  // Distribution of 2026 times
+  // Distribution of current year times
   const ranges = {
     '<4:00': [0, 240],
     '4:00-4:59': [240, 300],
@@ -81,9 +83,9 @@ export default function Trends() {
   })
 
   roster.forEach((member) => {
-    if (!member.times[2026]) return
+    if (!member.times[currentYear]) return
     for (const [range, [min, max]] of Object.entries(ranges)) {
-      if (member.times[2026] >= min && member.times[2026] < max) {
+      if (member.times[currentYear] >= min && member.times[currentYear] < max) {
         distribution[range]++
         break
       }
@@ -241,9 +243,9 @@ export default function Trends() {
         )}
       </div>
 
-      {/* Distribution of 2026 Times */}
+      {/* Distribution of Current Year Times */}
       <div className="bg-surface border border-border rounded-lg p-4 md:p-6">
-        <h2 className="text-xl font-bold text-txt mb-4">2026 Time Distribution</h2>
+        <h2 className="text-xl font-bold text-txt mb-4">{currentYear} Time Distribution</h2>
         {distributionData.some((d) => d.count > 0) ? (
           <div style={{ width: '100%', height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -270,7 +272,7 @@ export default function Trends() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="text-muted text-center py-8">No 2026 data yet</p>
+          <p className="text-muted text-center py-8">No {currentYear} data yet</p>
         )}
       </div>
 

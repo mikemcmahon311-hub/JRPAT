@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader, Plus, Edit2, Check, X, Timer, Square, RotateCcw } from 'lucide-react'
+import { Loader, Plus, Edit2, Check, X, Timer, Square, RotateCcw, AlertTriangle } from 'lucide-react'
 import { fetchRoster, fetchTimes, upsertTime, addMember, updateMember } from '../lib/database'
+import { useYear } from '../lib/YearContext'
 import { parseTime, formatTime, STATIONS, SHIFTS, YEARS } from '../lib/utils'
 
 export default function Admin() {
+  const { currentYear, advanceYear } = useYear()
   const [activeTab, setActiveTab] = useState('enter-times')
   const [roster, setRoster] = useState([])
   const [times, setTimes] = useState([])
@@ -62,6 +64,7 @@ export default function Admin() {
           { id: 'enter-times', label: 'Enter Times' },
           { id: 'manage-members', label: 'Manage Members' },
           { id: 'recent-entries', label: 'Recent Entries' },
+          { id: 'settings', label: 'Settings' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -81,6 +84,7 @@ export default function Admin() {
       {activeTab === 'enter-times' && (
         <EnterTimesForm
           roster={roster}
+          currentYear={currentYear}
           onSuccess={(msg) => {
             setSuccessMessage(msg)
             setTimeout(() => setSuccessMessage(null), 3000)
@@ -105,6 +109,18 @@ export default function Admin() {
           setSuccessMessage(msg)
           setTimeout(() => setSuccessMessage(null), 3000)
         }} />
+      )}
+
+      {/* Settings Tab */}
+      {activeTab === 'settings' && (
+        <AdvanceYearPanel
+          currentYear={currentYear}
+          advanceYear={advanceYear}
+          onSuccess={(msg) => {
+            setSuccessMessage(msg)
+            setTimeout(() => setSuccessMessage(null), 4000)
+          }}
+        />
       )}
     </div>
   )
@@ -273,9 +289,9 @@ function Stopwatch({ onCapture }) {
   )
 }
 
-function EnterTimesForm({ roster, onSuccess }) {
+function EnterTimesForm({ roster, currentYear, onSuccess }) {
   const [memberId, setMemberId] = useState('')
-  const [year, setYear] = useState('2026')
+  const [year, setYear] = useState(String(currentYear || new Date().getFullYear()))
   const [timeInput, setTimeInput] = useState('')
   const [isPlaceholder, setIsPlaceholder] = useState(false)
   const [notes, setNotes] = useState('')
@@ -833,6 +849,87 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
       ) : (
         <p className="text-muted text-center py-8">No entries yet</p>
       )}
+    </div>
+  )
+}
+
+function AdvanceYearPanel({ currentYear, advanceYear, onSuccess }) {
+  const [confirming, setConfirming] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleAdvance = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const next = await advanceYear()
+      setConfirming(false)
+      onSuccess(`✓ App advanced to ${next}. Leaderboards now show ${next} season.`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-surface border border-border rounded-lg p-6">
+        <h2 className="text-xl font-bold text-txt mb-1">Active Test Year</h2>
+        <p className="text-sm text-muted mb-6">
+          Controls which year's times appear on leaderboards, the dashboard, and the roster. Change this once per year when you're ready to start a new testing season.
+        </p>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="bg-surface2 border border-border rounded-lg px-6 py-4 text-center">
+            <p className="text-xs text-muted mb-1">Current Year</p>
+            <p className="text-4xl font-bold text-ember">{currentYear}</p>
+          </div>
+          <div className="text-muted text-2xl">→</div>
+          <div className="bg-surface2 border border-border rounded-lg px-6 py-4 text-center opacity-50">
+            <p className="text-xs text-muted mb-1">Next Year</p>
+            <p className="text-4xl font-bold text-txt">{currentYear + 1}</p>
+          </div>
+        </div>
+
+        {!confirming ? (
+          <button
+            onClick={() => setConfirming(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-ember text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+          >
+            Advance to {currentYear + 1} Season
+          </button>
+        ) : (
+          <div className="bg-fire bg-opacity-10 border border-fire rounded-lg p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="text-fire shrink-0 mt-0.5" size={18} />
+              <div>
+                <p className="font-semibold text-txt">Are you sure?</p>
+                <p className="text-sm text-muted mt-1">
+                  This will flip the entire app to the <strong>{currentYear + 1}</strong> season. Leaderboards will show empty until {currentYear + 1} times are entered. All historical data is preserved.
+                </p>
+              </div>
+            </div>
+            {error && <p className="text-fire text-sm">{error}</p>}
+            <div className="flex gap-3">
+              <button
+                onClick={handleAdvance}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-fire text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {loading ? <Loader size={16} className="animate-spin" /> : null}
+                Yes, advance to {currentYear + 1}
+              </button>
+              <button
+                onClick={() => setConfirming(false)}
+                className="px-4 py-2 bg-surface2 border border-border text-txt font-semibold rounded-lg hover:border-ember transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
