@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Loader } from 'lucide-react'
+import { Loader, ChevronRight, ChevronDown } from 'lucide-react'
 import { fetchRoster, fetchCrewLeaderboard } from '../lib/database'
 import { formatTime, getRankBadge, STATIONS, SHIFTS } from '../lib/utils'
 
@@ -11,6 +11,7 @@ export default function Leaderboard() {
   const [selectedStation, setSelectedStation] = useState('all')
   const [selectedShift, setSelectedShift] = useState('all')
   const [crewLeaderboard, setCrewLeaderboard] = useState([])
+  const [expandedCrews, setExpandedCrews] = useState(new Set())
 
   useEffect(() => {
     const loadData = async () => {
@@ -85,6 +86,52 @@ export default function Leaderboard() {
     }))
     .sort((a, b) => a.time - b.time)
     .slice(0, 50)
+
+  // Global 2026 individual rankings (unfiltered) — used for crew member rank display
+  const all2026 = roster
+    .filter((m) => m.times[2026])
+    .map((m) => ({ ...m, time: m.times[2026] }))
+    .sort((a, b) => a.time - b.time)
+
+  const allRanked2026 = []
+  for (let i = 0; i < all2026.length; i++) {
+    if (i === 0) {
+      allRanked2026.push({ ...all2026[i], rank: 1 })
+    } else {
+      const prev = allRanked2026[i - 1]
+      allRanked2026.push({
+        ...all2026[i],
+        rank: all2026[i].time === all2026[i - 1].time ? prev.rank : i + 1,
+      })
+    }
+  }
+  const rankById = {}
+  allRanked2026.forEach((m) => { rankById[m.id] = m.rank })
+
+  // Map crew name → members sorted by 2026 time
+  const crewMembersMap = {}
+  roster.forEach((member) => {
+    if (!member.times[2026]) return
+    const crew = member.crew || 'Unassigned'
+    if (!crewMembersMap[crew]) crewMembersMap[crew] = []
+    crewMembersMap[crew].push({
+      ...member,
+      time2026: member.times[2026],
+      rank2026: rankById[member.id] ?? null,
+    })
+  })
+  Object.keys(crewMembersMap).forEach((crew) => {
+    crewMembersMap[crew].sort((a, b) => a.time2026 - b.time2026)
+  })
+
+  const toggleCrew = (crewName) => {
+    setExpandedCrews((prev) => {
+      const next = new Set(prev)
+      if (next.has(crewName)) next.delete(crewName)
+      else next.add(crewName)
+      return next
+    })
+  }
 
   const shiftColors = {
     'A-Shift': 'bg-blue',
@@ -197,33 +244,76 @@ export default function Leaderboard() {
       {activeTab === 'crew' && (
         <div className="space-y-2">
           {crewLeaderboard.length > 0 ? (
-            crewLeaderboard.map((crew, idx) => (
-              <div
-                key={crew.crew}
-                className="flex items-center justify-between p-4 rounded-lg bg-surface2 border border-border hover:border-ember transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1">
-                  {idx < 3 && (
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${getRankBadge(idx + 1)}`}
-                    >
-                      {idx + 1}
+            crewLeaderboard.map((crew, idx) => {
+              const isExpanded = expandedCrews.has(crew.crew)
+              const members = crewMembersMap[crew.crew] || []
+              return (
+                <div
+                  key={crew.crew}
+                  className="rounded-lg bg-surface2 border border-border overflow-hidden transition-colors"
+                >
+                  {/* Crew Row — clickable */}
+                  <div
+                    className="flex items-center justify-between p-4 cursor-pointer hover:border-ember"
+                    onClick={() => toggleCrew(crew.crew)}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      {idx < 3 ? (
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${getRankBadge(idx + 1)}`}
+                        >
+                          {idx + 1}
+                        </div>
+                      ) : (
+                        <div className="w-8 text-center font-bold text-muted">#{idx + 1}</div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold text-txt">{crew.crew}</p>
+                        <p className="text-xs text-muted">{crew.count} members</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-gold">{formatTime(crew.average)}</p>
+                        <p className="text-xs text-muted">avg</p>
+                      </div>
+                      {isExpanded
+                        ? <ChevronDown className="text-muted shrink-0" size={18} />
+                        : <ChevronRight className="text-muted shrink-0" size={18} />
+                      }
+                    </div>
+                  </div>
+
+                  {/* Expanded Member List */}
+                  {isExpanded && members.length > 0 && (
+                    <div className="border-t border-border">
+                      {members.map((member) => (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between px-4 py-3 border-b border-border last:border-b-0 bg-surface"
+                        >
+                          <div className="flex items-center gap-3">
+                            {member.rank2026 !== null && member.rank2026 <= 3 ? (
+                              <div
+                                className={`w-6 h-6 rounded flex items-center justify-center font-bold text-xs ${getRankBadge(member.rank2026)}`}
+                              >
+                                {member.rank2026}
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded flex items-center justify-center text-xs text-muted font-semibold">
+                                {member.rank2026 !== null ? `#${member.rank2026}` : '—'}
+                              </div>
+                            )}
+                            <p className="text-sm font-medium text-txt">{member.name}</p>
+                          </div>
+                          <p className="text-sm font-bold text-gold">{formatTime(member.time2026)}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
-                  {idx >= 3 && (
-                    <div className="w-8 text-center font-bold text-muted">#{idx + 1}</div>
-                  )}
-                  <div className="flex-1">
-                    <p className="font-semibold text-txt">{crew.crew}</p>
-                    <p className="text-xs text-muted">{crew.count} members</p>
-                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-gold">{formatTime(crew.average)}</p>
-                  <p className="text-xs text-muted">avg</p>
-                </div>
-              </div>
-            ))
+              )
+            })
           ) : (
             <p className="text-muted text-center py-8">No crew data for 2026</p>
           )}
