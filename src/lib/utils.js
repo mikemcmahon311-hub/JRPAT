@@ -108,4 +108,4 @@ export const STATIONS = ['Station 211', 'Station 212', 'Station 213', 'Station 2
 /**
  * Shift designations
  */
-export const SHIFTS = ['A-Shift', 'B-Shift', 'C-Shift'];
+export const SHIFTS = ['A-Shift', 'B-Shift', 'C-Shift', 'Admin'];

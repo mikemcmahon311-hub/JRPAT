@@ -489,6 +489,7 @@ function MemberFields({ station, setStation, shift, setShift, rank, setRank, cre
             <option value="DRIVER-ENGINEER">Driver-Engineer</option>
             <option value="MEDICAL OPERATIONS TECHNICIAN">MOT</option>
             <option value="Captain">Captain</option>
+            <option value="Assistant Chief">Assistant Chief</option>
             <option value="Battalion Chief">Battalion Chief</option>
           </select>
         </div>
