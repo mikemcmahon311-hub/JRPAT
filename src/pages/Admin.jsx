@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Loader, Plus, Edit2, Check, X, Timer, Square, RotateCcw, AlertTriangle } from 'lucide-react'
+import { Loader, Plus, Edit2, Check, X, Timer, Square, RotateCcw, AlertTriangle, Download } from 'lucide-react'
 import { fetchRoster, fetchTimes, upsertTime, addMember, updateMember } from '../lib/database'
 import { useYear } from '../lib/YearContext'
+import { exportRosterToExcel } from '../lib/exportToExcel'
 import { parseTime, formatTime, STATIONS, SHIFTS, YEARS } from '../lib/utils'
 
 export default function Admin() {
@@ -64,6 +65,7 @@ export default function Admin() {
           { id: 'enter-times', label: 'Enter Times' },
           { id: 'manage-members', label: 'Manage Members' },
           { id: 'recent-entries', label: 'Recent Entries' },
+          { id: 'export', label: 'Export' },
           { id: 'settings', label: 'Settings' },
         ].map((tab) => (
           <button
@@ -109,6 +111,11 @@ export default function Admin() {
           setSuccessMessage(msg)
           setTimeout(() => setSuccessMessage(null), 3000)
         }} />
+      )}
+
+      {/* Export Tab */}
+      {activeTab === 'export' && (
+        <ExportPanel roster={roster} currentYear={currentYear} />
       )}
 
       {/* Settings Tab */}
@@ -858,6 +865,70 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
       ) : (
         <p className="text-muted text-center py-8">No entries yet</p>
       )}
+    </div>
+  )
+}
+
+function ExportPanel({ roster, currentYear }) {
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = () => {
+    setExporting(true)
+    try {
+      exportRosterToExcel(roster, currentYear)
+    } finally {
+      setTimeout(() => setExporting(false), 1000)
+    }
+  }
+
+  const years = []
+  for (let y = 2020; y <= currentYear; y++) years.push(y)
+  const tested = roster.filter(m => m.times[currentYear]).length
+
+  return (
+    <div className="space-y-4 max-w-2xl">
+      <div className="bg-surface border border-border rounded-lg p-6 space-y-5">
+        <div>
+          <h2 className="text-xl font-bold text-txt mb-1">Export to Excel</h2>
+          <p className="text-sm text-muted">Downloads a complete snapshot of all JRPAT data as a .xlsx file.</p>
+        </div>
+
+        {/* What's included */}
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 p-3 bg-surface2 rounded-lg border border-border">
+            <span className="text-ember font-bold text-sm w-5 shrink-0">1</span>
+            <div>
+              <p className="font-semibold text-txt text-sm">Master Roster</p>
+              <p className="text-xs text-muted mt-0.5">All {roster.length} members · Columns for {years.join(', ')} · Personal best · T-shirt count · Sorted by station &amp; shift. Placeholder times marked with *</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-surface2 rounded-lg border border-border">
+            <span className="text-ember font-bold text-sm w-5 shrink-0">2</span>
+            <div>
+              <p className="font-semibold text-txt text-sm">{currentYear} Individual Rankings</p>
+              <p className="text-xs text-muted mt-0.5">{tested} runners ranked by time · Ties handled · New PBs flagged · Placeholders excluded</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-surface2 rounded-lg border border-border">
+            <span className="text-ember font-bold text-sm w-5 shrink-0">3</span>
+            <div>
+              <p className="font-semibold text-txt text-sm">{currentYear} Crew Averages</p>
+              <p className="text-xs text-muted mt-0.5">All crews ranked by avg time · Individual member times listed per crew</p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={handleExport}
+          disabled={exporting || roster.length === 0}
+          className="flex items-center gap-2 px-5 py-3 bg-ember text-white font-semibold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {exporting
+            ? <><Loader size={18} className="animate-spin" /> Generating...</>
+            : <><Download size={18} /> Download JRPAT_{currentYear}_Export.xlsx</>
+          }
+        </button>
+      </div>
     </div>
   )
 }
