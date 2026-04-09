@@ -47,7 +47,7 @@ export default function Admin() {
       <h1 className="text-3xl font-bold text-txt md:text-4xl">Admin Panel</h1>
 
       {error && (
-        <div className="p-4 bg-fire bg-opacity-10 border border-fire rounded-lg text-fire text-sm">
+        <div className="p-4 bg-fire bg-opacity-10 border border-fire rounded-lg text-txt text-sm">
           {error}
         </div>
       )}
@@ -349,7 +349,7 @@ function EnterTimesForm({ roster, currentYear, onSuccess }) {
       {/* Form */}
       <div className="bg-surface border border-border rounded-lg p-6">
         {error && (
-          <div className="mb-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-fire text-sm">
+          <div className="mb-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-txt text-sm">
             {error}
           </div>
         )}
@@ -496,8 +496,16 @@ function MemberFields({ station, setStation, shift, setShift, rank, setRank, cre
         <div>
           <label className="block text-sm font-semibold text-txt mb-2">Crew</label>
           <input type="text" value={crew} onChange={(e) => setCrew(e.target.value)}
+            list="crew-options"
             placeholder="e.g., 211 A"
             className="w-full bg-surface2 border border-border rounded-lg px-3 py-2 text-txt placeholder-muted focus:outline-none focus:border-ember" />
+          <datalist id="crew-options">
+            <option value="211 A" /><option value="211 B" /><option value="211 C" />
+            <option value="212 A" /><option value="212 B" /><option value="212 C" />
+            <option value="213 A" /><option value="213 B" /><option value="213 C" />
+            <option value="214 A" /><option value="214 B" /><option value="214 C" />
+            <option value="Admin" /><option value="BC" />
+          </datalist>
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -618,7 +626,7 @@ function ManageMembersForm({ roster, onSuccess }) {
           <Plus size={18} className="text-ember" /> Add New Member
         </h3>
         {addError && (
-          <div className="mb-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-fire text-sm">{addError}</div>
+          <div className="mb-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-txt text-sm">{addError}</div>
         )}
         <form onSubmit={handleAdd} className="space-y-4">
           <div>
@@ -649,7 +657,7 @@ function ManageMembersForm({ roster, onSuccess }) {
           <Edit2 size={18} className="text-blue" /> Edit Existing Member
         </h3>
         {editError && (
-          <div className="mb-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-fire text-sm">{editError}</div>
+          <div className="mb-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-txt text-sm">{editError}</div>
         )}
         <form onSubmit={handleEdit} className="space-y-4">
           <div>
@@ -774,7 +782,7 @@ function RecentEntriesTable({ roster, times, onSuccess }) {
       </div>
 
       {editError && (
-        <div className="mx-6 mt-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-fire text-sm">{editError}</div>
+        <div className="mx-6 mt-4 p-3 bg-fire bg-opacity-10 border border-fire rounded text-txt text-sm">{editError}</div>
       )}
 
       {recent.length > 0 ? (
